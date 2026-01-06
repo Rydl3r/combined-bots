@@ -157,7 +157,7 @@ Since both bots use Telegram, make sure to use different bot tokens:
 
 ```env- TrackFin bot uses `TRACKFIN_BOT_TOKEN`
 
-CRON_EXPRESSION=0 _/5 _ \* \* \* # Every 5 minutes- Positions tracker bot should use its original token environment variable
+CRON*EXPRESSION=0 */5 \_ \* \* \* # Every 5 minutes- Positions tracker bot should use its original token environment variable
 
 ````
 
@@ -339,6 +339,187 @@ Both bots can run simultaneously without conflicts.
 - Use environment variables on your deployment platform
 - Restrict API key permissions to only what's needed
 - Consider using IP whitelisting for exchange APIs
+
+## Oracle Cloud Deployment Guide
+
+This project is deployed on **Oracle Cloud Free Tier** for 24/7 operation.
+
+### Server Details
+
+- **Provider**: Oracle Cloud (Always Free Tier)
+- **OS**: Ubuntu 22.04
+- **Shape**: VM.Standard.A1.Flex (ARM)
+- **Resources**: 1 OCPU, 6GB RAM
+
+### SSH Connection
+
+```bash
+ssh -i ~/.ssh/oracle-bot ubuntu@YOUR_VM_PUBLIC_IP
+```
+
+### PM2 Process Management
+
+```bash
+# View status
+pm2 status
+
+# View logs (live)
+pm2 logs combined-bots
+
+# View last 100 lines
+pm2 logs combined-bots --lines 100
+
+# Restart bot
+pm2 restart combined-bots
+
+# Stop bot
+pm2 stop combined-bots
+
+# Start bot
+pm2 start combined-bots
+
+# Monitor resources
+pm2 monit
+```
+
+### Updating the Bot
+
+```bash
+cd ~/combined-bots
+git pull
+npm install
+pm2 restart combined-bots
+```
+
+Or use the update script:
+
+```bash
+~/update-bot.sh
+```
+
+### Editing Environment Variables
+
+```bash
+cd ~/combined-bots
+nano .env
+```
+
+After editing, restart the bot:
+
+```bash
+pm2 restart combined-bots
+```
+
+### Viewing Logs
+
+```bash
+# Real-time logs
+pm2 logs combined-bots
+
+# Error logs only
+pm2 logs combined-bots --err
+
+# Save logs to file
+pm2 logs combined-bots > ~/bot-logs.txt
+```
+
+### Server Maintenance
+
+```bash
+# Update system packages
+sudo apt update && sudo apt upgrade -y
+
+# Check disk space
+df -h
+
+# Check memory usage
+free -h
+
+# Check CPU usage
+htop
+```
+
+### Troubleshooting
+
+#### Bot Not Starting
+
+```bash
+# Check for errors
+pm2 logs combined-bots --err --lines 50
+
+# Try running directly to see errors
+cd ~/combined-bots
+node dist/combined-bots/src/index.js
+```
+
+#### PM2 Not Running After Reboot
+
+```bash
+pm2 resurrect
+# or
+pm2 start dist/combined-bots/src/index.js --name "combined-bots"
+pm2 save
+```
+
+#### Reinstall Dependencies
+
+```bash
+cd ~/combined-bots
+rm -rf node_modules
+npm install
+pm2 restart combined-bots
+```
+
+### Backup Commands
+
+```bash
+# Backup .env file locally (run from Mac)
+scp -i ~/.ssh/oracle-bot ubuntu@YOUR_VM_PUBLIC_IP:~/combined-bots/.env ~/backup-env-$(date +%Y%m%d).txt
+
+# Backup entire project (run from Mac)
+scp -r -i ~/.ssh/oracle-bot ubuntu@YOUR_VM_PUBLIC_IP:~/combined-bots ~/combined-bots-backup
+```
+
+### Useful Aliases (add to ~/.bashrc on server)
+
+```bash
+alias botlogs='pm2 logs combined-bots'
+alias botrestart='pm2 restart combined-bots'
+alias botstatus='pm2 status'
+alias botupdate='cd ~/combined-bots && git pull && npm install && pm2 restart combined-bots'
+```
+
+### Important Paths
+
+| Item          | Path                                              |
+| ------------- | ------------------------------------------------- |
+| Project       | `~/combined-bots`                                 |
+| Environment   | `~/combined-bots/.env`                            |
+| Entry point   | `~/combined-bots/dist/combined-bots/src/index.js` |
+| PM2 logs      | `~/.pm2/logs/`                                    |
+| Update script | `~/update-bot.sh`                                 |
+
+### Oracle Cloud Console
+
+- **URL**: https://cloud.oracle.com
+- **Instances**: Compute → Instances
+- **Networking**: Networking → Virtual Cloud Networks
+
+### Emergency: Full Reinstall
+
+```bash
+cd ~
+rm -rf combined-bots
+git clone https://github.com/YOUR_USERNAME/combined-bots.git
+cd combined-bots
+npm install
+nano .env  # recreate .env file
+pm2 delete combined-bots
+pm2 start dist/combined-bots/src/index.js --name "combined-bots"
+pm2 save
+```
+
+---
 
 ## License
 
